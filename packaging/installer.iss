@@ -4,30 +4,33 @@
 #endif
 
 [Setup]
-AppName=ClipShow
+AppName=ClipShow 中文版
 AppVersion={#AppVer}
-AppPublisher=ClipShow Contributors
+AppPublisher=ClipShow 中文版
 DefaultDirName={autopf}\ClipShow
-DefaultGroupName=ClipShow
+DefaultGroupName=ClipShow 中文版
 OutputBaseFilename=ClipShow-{#AppVer}-setup
 Compression=lzma2
 SolidCompression=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
-UninstallDisplayName=ClipShow
+UninstallDisplayName=ClipShow 中文版
 LicenseFile=..\LICENSE
 
+[Languages]
+Name: "chinesesimp"; MessagesFile: "compiler:Languages\\ChineseSimplified.isl"
+
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加快捷方式"
 
 [Files]
 Source: "..\dist\ClipShow\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
 [Icons]
-Name: "{group}\ClipShow"; Filename: "{app}\ClipShow.exe"
+Name: "{group}\ClipShow 中文版"; Filename: "{app}\ClipShow.exe"
 Name: "{group}\{cm:UninstallProgram,ClipShow}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\ClipShow"; Filename: "{app}\ClipShow.exe"; Tasks: desktopicon
+Name: "{autodesktop}\ClipShow 中文版"; Filename: "{app}\ClipShow.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\ClipShow.exe"; Description: "{cm:LaunchProgram,ClipShow}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\ClipShow.exe"; Description: "启动 ClipShow 中文版"; Flags: nowait postinstall skipifsilent
