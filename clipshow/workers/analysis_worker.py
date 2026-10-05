@@ -136,7 +136,7 @@ class AnalysisWorker(QThread):
             if self._cancelled:
                 break
             basename = _Path(path).name
-            self.status.emit(f"Analyzing {basename}...")
+            self.status.emit(f"正在分析 {basename}...")
             moments = self._analyze_one(path, duration)
             all_moments.extend(moments)
             self.file_complete.emit(path)
@@ -145,7 +145,7 @@ class AnalysisWorker(QThread):
         self, all_moments: list[DetectedMoment], max_workers: int
     ) -> None:
         n = len(self.video_paths)
-        self.status.emit(f"Analyzing {n} videos in parallel...")
+        self.status.emit(f"正在并行分析 {n} 个视频...")
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_path: dict[concurrent.futures.Future, str] = {}
