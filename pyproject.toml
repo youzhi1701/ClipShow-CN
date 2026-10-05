@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "clipshow"
 version = "0.4.0"
-description = "Automatic highlight reel generator from video clips"
+description = "从视频素材中自动生成高光集锦"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11,<3.13"
