@@ -42,7 +42,7 @@ class _PromptRow(QWidget):
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         remove_btn = QPushButton("\u00d7")  # multiplication sign as "x"
         remove_btn.setFixedSize(20, 20)
-        remove_btn.setToolTip("Remove this prompt")
+        remove_btn.setToolTip("删除这条提示词")
         remove_btn.setStyleSheet("QPushButton { border: none; font-weight: bold; }")
         remove_btn.clicked.connect(lambda: self.remove_clicked.emit(index))
         layout.addWidget(label, stretch=1)
@@ -85,8 +85,8 @@ class PromptEditor(QWidget):
         # Add row
         add_row = QHBoxLayout()
         self.line_edit = QLineEdit()
-        self.line_edit.setPlaceholderText("New prompt\u2026")
-        self.add_button = QPushButton("Add")
+        self.line_edit.setPlaceholderText("输入新的提示词…")
+        self.add_button = QPushButton("添加")
         self.add_button.setAutoDefault(False)
         add_row.addWidget(self.line_edit)
         add_row.addWidget(self.add_button)
@@ -94,10 +94,10 @@ class PromptEditor(QWidget):
 
         # Action buttons
         btn_row = QHBoxLayout()
-        self.remove_button = QPushButton("Remove")
+        self.remove_button = QPushButton("删除")
         self.remove_button.setAutoDefault(False)
         self.remove_button.setEnabled(False)
-        self.reset_button = QPushButton("Reset to Defaults")
+        self.reset_button = QPushButton("恢复默认")
         self.reset_button.setAutoDefault(False)
         btn_row.addWidget(self.remove_button)
         btn_row.addStretch()
