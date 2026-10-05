@@ -145,7 +145,7 @@ class SettingsDialog(QDialog):
         self.fps_spin = QDoubleSpinBox()
         self.fps_spin.setRange(1.0, 120.0)
         self.fps_spin.setSingleStep(1.0)
-        output_layout.addRow("FPS:", self.fps_spin)
+        output_layout.addRow("帧率 (FPS)：", self.fps_spin)
 
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setPlaceholderText("例如：8M")
