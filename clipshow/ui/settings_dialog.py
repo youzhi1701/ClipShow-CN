@@ -67,7 +67,14 @@ class SettingsDialog(QDialog):
             row = QHBoxLayout()
             row.addWidget(slider)
             row.addWidget(label)
-            weights_layout.addRow({"scene":"场景：","audio":"音频：","motion":"运动：","semantic":"语义：","emotion":"表情："}.get(name, f"{name}："), row)
+            detector_labels = {
+                "scene": "场景：",
+                "audio": "音频：",
+                "motion": "运动：",
+                "semantic": "语义：",
+                "emotion": "表情：",
+            }
+            weights_layout.addRow(detector_labels.get(name, f"{name}："), row)
             self._weight_sliders[name] = slider
             self._weight_labels[name] = label
             slider.valueChanged.connect(
