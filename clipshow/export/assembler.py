@@ -34,7 +34,7 @@ def assemble_highlights(
     """
     included = [s for s in segments if s.included]
     if not included:
-        raise ValueError("No included segments to assemble")
+        raise ValueError("没有可用于合成的已选片段")
 
     clips = []
     try:
