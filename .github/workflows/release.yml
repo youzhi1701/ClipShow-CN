@@ -1,0 +1,327 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [lite, full]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install FFmpeg
+        run: brew install ffmpeg
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -e ".[all,test]"
+          uv pip install --system pyinstaller
+
+      - name: Run tests
+        run: pytest tests/ -v -m "not uses_audio_fixture"
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Download models for full build
+        if: matrix.variant == 'full'
+        run: |
+          python packaging/download_models.py
+
+      - name: Build macOS app bundle
+        run: pyinstaller packaging/clipshow_macos.spec --noconfirm
+        env:
+          CLIPSHOW_BUNDLE_MODELS: ${{ matrix.variant == 'full' && '1' || '0' }}
+
+      - name: Create DMG
+        run: |
+          brew install create-dmg
+          create-dmg \
+            --volname "ClipShow" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "ClipShow.app" 150 190 \
+            --app-drop-link 450 190 \
+            "dist/ClipShow-${{ github.ref_name }}-macos-${{ matrix.variant }}.dmg" \
+            "dist/ClipShow.app" || true
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClipShow-macos-${{ matrix.variant }}
+          path: dist/ClipShow-*.dmg
+
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [lite, full]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install FFmpeg
+        run: choco install ffmpeg -y
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -e ".[all,test]"
+          uv pip install --system pyinstaller
+
+      - name: Run tests
+        run: pytest tests/ -v -m "not uses_audio_fixture"
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Download models for full build
+        if: matrix.variant == 'full'
+        shell: bash
+        run: |
+          python packaging/download_models.py
+
+      - name: Build Windows executable
+        run: pyinstaller packaging/clipshow_windows.spec --noconfirm
+        env:
+          CLIPSHOW_BUNDLE_MODELS: ${{ matrix.variant == 'full' && '1' || '0' }}
+
+      - name: Extract version from pyproject.toml
+        id: version
+        shell: bash
+        run: |
+          VER=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+
+      - name: Build Inno Setup installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
+        with:
+          path: packaging/installer.iss
+          options: /DAppVer=${{ steps.version.outputs.ver }}
+
+      - name: Rename installer for variant
+        shell: bash
+        run: |
+          cd packaging/Output
+          for f in ClipShow-*-setup.exe; do
+            mv "$f" "${f%-setup.exe}-${{ matrix.variant }}-setup.exe"
+          done
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClipShow-windows-${{ matrix.variant }}
+          path: packaging/Output/ClipShow-*-setup.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Flatpak and flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+
+      - name: Add Flathub remote
+        run: |
+          flatpak remote-add --user --if-not-exists \
+            flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install KDE SDK runtime
+        run: |
+          flatpak install --user --noninteractive \
+            flathub org.kde.Platform//6.7 org.kde.Sdk//6.7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Generate pinned requirements for Flatpak
+        run: |
+          uv export --frozen --no-hashes --no-dev --all-extras \
+            | grep -v "^-e " > requirements-flatpak.txt
+
+      - name: Download static ffmpeg for Flatpak
+        run: |
+          FFMPEG_URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-linux64-gpl-7.1.tar.xz"
+          curl -sL "${FFMPEG_URL}" -o /tmp/ffmpeg.tar.xz
+          tar xJf /tmp/ffmpeg.tar.xz -C /tmp
+          mkdir -p ffmpeg-bin
+          cp /tmp/ffmpeg-n7.1-latest-linux64-gpl-7.1/bin/ffmpeg ffmpeg-bin/
+          cp /tmp/ffmpeg-n7.1-latest-linux64-gpl-7.1/bin/ffprobe ffmpeg-bin/
+          chmod +x ffmpeg-bin/ffmpeg ffmpeg-bin/ffprobe
+          echo "Bundled ffmpeg: $(ffmpeg-bin/ffmpeg -version | head -1)"
+
+      - name: Build Flatpak
+        run: |
+          flatpak-builder --user --force-clean \
+            --repo=repo \
+            build-dir packaging/com.clipshow.app.yml
+
+      - name: Bundle Flatpak
+        run: |
+          REF_SLUG="${{ github.ref_name }}"
+          REF_SLUG="${REF_SLUG//\//-}"
+          flatpak build-bundle \
+            repo \
+            "ClipShow-${REF_SLUG}-linux.flatpak" \
+            com.clipshow.app
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClipShow-linux
+          path: ClipShow-*.flatpak
+
+  smoke-test-linux:
+    needs: [build-linux]
+    if: needs.build-linux.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Flatpak
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak xvfb
+
+      - name: Add Flathub remote
+        run: |
+          flatpak remote-add --user --if-not-exists \
+            flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install KDE runtime
+        run: |
+          flatpak install --user --noninteractive \
+            flathub org.kde.Platform//6.7
+
+      - name: Download Flatpak artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ClipShow-linux
+          path: artifacts/
+
+      - name: Install ClipShow Flatpak
+        run: |
+          flatpak install --user --noninteractive \
+            artifacts/ClipShow-*.flatpak
+
+      - name: Generate test video
+        run: |
+          sudo apt-get install -y ffmpeg
+          mkdir -p ~/clipshow-smoke-test
+          ffmpeg -y -loglevel error \
+            -f lavfi -i "color=c=black:s=320x240:d=1:r=30,format=yuv420p" \
+            -f lavfi -i "color=c=white:s=320x240:d=1:r=30,format=yuv420p" \
+            -f lavfi -i "anullsrc=r=44100:cl=mono" \
+            -filter_complex "[0:v][1:v]concat=n=2:v=1:a=0[v]" \
+            -map "[v]" -map 2:a -t 2 -c:v libx264 -c:a aac -shortest \
+            ~/clipshow-smoke-test/test_input.mp4
+
+      - name: Run smoke test
+        run: |
+          xvfb-run flatpak run com.clipshow.app \
+            --headless \
+            --output ~/clipshow-smoke-test/test_output.mp4 \
+            ~/clipshow-smoke-test/test_input.mp4 \
+            2>~/clipshow-smoke-test/stderr.log
+          echo "Exit code: $?"
+
+      - name: Verify output
+        run: |
+          if [[ ! -f ~/clipshow-smoke-test/test_output.mp4 ]]; then
+            echo "FAIL: Output file not created"
+            exit 1
+          fi
+          SIZE=$(stat -c%s ~/clipshow-smoke-test/test_output.mp4)
+          if [[ ${SIZE} -le 0 ]]; then
+            echo "FAIL: Output file is empty"
+            exit 1
+          fi
+          echo "PASS: Output file exists (${SIZE} bytes)"
+
+      - name: Check for errors in stderr
+        run: |
+          if grep -qi "error\|traceback\|exception" ~/clipshow-smoke-test/stderr.log 2>/dev/null; then
+            echo "FAIL: Errors found in stderr:"
+            grep -i "error\|traceback\|exception" ~/clipshow-smoke-test/stderr.log | head -10
+            exit 1
+          fi
+          echo "PASS: No errors in stderr"
+
+  create-release:
+    needs: [build-macos, build-windows, build-linux]
+    if: always() && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download macOS lite artifact
+        if: needs.build-macos.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: ClipShow-macos-lite
+          path: artifacts/
+
+      - name: Download macOS full artifact
+        if: needs.build-macos.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: ClipShow-macos-full
+          path: artifacts/
+
+      - name: Download Windows lite artifact
+        if: needs.build-windows.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: ClipShow-windows-lite
+          path: artifacts/
+
+      - name: Download Windows full artifact
+        if: needs.build-windows.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: ClipShow-windows-full
+          path: artifacts/
+
+      - name: Download Linux artifact
+        if: needs.build-linux.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: ClipShow-linux
+          path: artifacts/
+
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
+
+      - name: List artifacts
+        run: find artifacts/ -type f | head -50
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.dmg
+            artifacts/**/*-setup.exe
+            artifacts/**/*.flatpak
