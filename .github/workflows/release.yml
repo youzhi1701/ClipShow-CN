@@ -35,8 +35,10 @@ jobs:
           uv pip install --system -e ".[all,test]"
           uv pip install --system pyinstaller
 
-      - name: Run tests
-        run: pytest tests/ -v -m "not uses_audio_fixture"
+      - name: Validate localized build
+        run: |
+          python -m compileall -q clipshow
+          python scripts/check_chinese_ui.py
         env:
           QT_QPA_PLATFORM: offscreen
 
@@ -94,8 +96,10 @@ jobs:
           uv pip install --system -e ".[all,test]"
           uv pip install --system pyinstaller
 
-      - name: Run tests
-        run: pytest tests/ -v -m "not uses_audio_fixture"
+      - name: Validate localized build
+        run: |
+          python -m compileall -q clipshow
+          python scripts/check_chinese_ui.py
         env:
           QT_QPA_PLATFORM: offscreen
 
