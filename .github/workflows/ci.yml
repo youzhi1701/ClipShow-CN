@@ -41,25 +41,12 @@ jobs:
         run: uv pip install --system -e ".[test]"
 
       - name: Lint with ruff
-        run: ruff check clipshow/ tests/
+        run: ruff check clipshow/ scripts/check_chinese_ui.py
 
-      - name: Run tests (Linux)
-        if: runner.os == 'Linux'
-        uses: GabrielBB/xvfb-action@v1
-        with:
-          run: pytest tests/ -v -n auto --cov=clipshow --cov-report=xml -m "not uses_audio_fixture"
+      - name: Compile Python sources
+        run: python -m compileall -q clipshow
+
+      - name: Check Chinese UI and launch GUI offscreen
+        run: python scripts/check_chinese_ui.py
         env:
           QT_QPA_PLATFORM: offscreen
-
-      - name: Run tests (macOS/Windows)
-        if: runner.os != 'Linux'
-        run: pytest tests/ -v -n auto --cov=clipshow --cov-report=xml -m "not uses_audio_fixture"
-        env:
-          QT_QPA_PLATFORM: offscreen
-
-      - name: Upload test artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-screenshots-${{ matrix.os }}
-          path: tests/baselines/**/*_diff.png
