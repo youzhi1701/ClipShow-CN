@@ -114,8 +114,8 @@ class ReviewPanel(QWidget):
         seg = self.segment_list.selected_segment
         if seg:
             self.trim_label.setText(
-                f"{seg.start_time:.1f}s - {seg.end_time:.1f}s "
-                f"({seg.duration:.1f}s)"
+                f"{seg.start_time:.1f}秒 - {seg.end_time:.1f}秒 "
+                f"（{seg.duration:.1f}秒）"
             )
         else:
             self.trim_label.setText("未选择片段")
