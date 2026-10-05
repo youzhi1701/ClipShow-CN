@@ -62,4 +62,4 @@ def gui_smoke() -> None:
 if __name__ == "__main__":
     static_scan()
     gui_smoke()
-    print("ClipShow-CN 中文界面检查通过")
+    print("ClipShow-CN localization check passed")
