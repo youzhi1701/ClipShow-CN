@@ -34,8 +34,8 @@ class VideoPreview(QWidget):
 
         # Controls
         controls = QHBoxLayout()
-        self.play_button = QPushButton("Play")
-        self.pause_button = QPushButton("Pause")
+        self.play_button = QPushButton("播放")
+        self.pause_button = QPushButton("暂停")
         self.play_button.setEnabled(False)
         self.pause_button.setEnabled(False)
         controls.addWidget(self.play_button)
