@@ -71,21 +71,21 @@ def _expand_globs(patterns: list[str], base_dir: Path) -> list[str]:
 def _warn_unknown_keys(keys: set[str], known: set[str], section: str) -> None:
     unknown = keys - known
     for key in sorted(unknown):
-        warnings.warn(f"Unknown key '{key}' in {section} section of pipeline config", stacklevel=3)
+        warnings.warn(f"流程配置的 {section} 部分包含未知字段 '{key}'", stacklevel=3)
 
 
 def load_pipeline_config(path: str | Path) -> PipelineConfig:
     """Load a YAML pipeline config file and return a PipelineConfig."""
     path = Path(path)
     if not path.exists():
-        raise FileNotFoundError(f"Config file not found: {path}")
+        raise FileNotFoundError(f"找不到配置文件：{path}")
 
     raw = yaml.safe_load(path.read_text())
     if raw is None:
         # Empty YAML file
         return PipelineConfig()
     if not isinstance(raw, dict):
-        raise ValueError(f"Pipeline config must be a YAML mapping, got {type(raw).__name__}")
+        raise ValueError(f"流程配置必须是 YAML 映射，当前类型：{type(raw).__name__}")
 
     _warn_unknown_keys(set(raw.keys()), KNOWN_TOP_KEYS, "top-level")
 
@@ -98,7 +98,7 @@ def load_pipeline_config(path: str | Path) -> PipelineConfig:
         if isinstance(patterns, str):
             patterns = [patterns]
         if not isinstance(patterns, list):
-            raise ValueError("'inputs' must be a string or list of strings")
+            raise ValueError("'inputs' 必须是字符串或字符串列表")
         cfg.inputs = _expand_globs(patterns, base_dir)
 
     # --- output ---
@@ -115,13 +115,13 @@ def load_pipeline_config(path: str | Path) -> PipelineConfig:
                 cfg.output_fps = float(out["fps"])
             cfg.output_bitrate = out.get("bitrate")
         else:
-            raise ValueError("'output' must be a string or mapping")
+            raise ValueError("'output' 必须是字符串或映射")
 
     # --- detectors ---
     if "detectors" in raw:
         det = raw["detectors"]
         if not isinstance(det, dict):
-            raise ValueError("'detectors' must be a mapping")
+            raise ValueError("'detectors' 必须是映射")
         if "scene" in det:
             cfg.scene_weight = float(det["scene"])
         if "audio" in det:
@@ -137,7 +137,7 @@ def load_pipeline_config(path: str | Path) -> PipelineConfig:
     if "semantic" in raw:
         sem = raw["semantic"]
         if not isinstance(sem, dict):
-            raise ValueError("'semantic' must be a mapping")
+            raise ValueError("'semantic' 必须是映射")
         _warn_unknown_keys(set(sem.keys()), KNOWN_SEMANTIC_KEYS, "semantic")
         if "prompts" in sem:
             cfg.semantic_prompts = list(sem["prompts"])
@@ -148,7 +148,7 @@ def load_pipeline_config(path: str | Path) -> PipelineConfig:
     if "segments" in raw:
         seg = raw["segments"]
         if not isinstance(seg, dict):
-            raise ValueError("'segments' must be a mapping")
+            raise ValueError("'segments' 必须是映射")
         _warn_unknown_keys(set(seg.keys()), KNOWN_SEGMENT_KEYS, "segments")
         if "threshold" in seg:
             cfg.score_threshold = float(seg["threshold"])
