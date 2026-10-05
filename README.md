@@ -13,17 +13,22 @@ ClipShow-CN 是基于开源项目 **ClipShow** 制作的简体中文本地化版
 
 ## 下载 Windows 中文版
 
-最新稳定构建：**v0.4.0-cn-10**
+最新稳定构建：**v0.4.0-cn-12**
 
 - **Full 完整版（推荐）**：约 497 MB，已内置 CLIP 语义模型，安装后更省事。
 - **Lite 精简版**：约 170 MB，不内置 CLIP 模型；首次启用语义分析时会自动下载并缓存模型。
 
 Release 页面：
-https://github.com/youzhi1701/ClipShow-CN/releases/tag/v0.4.0-cn-10
+https://github.com/youzhi1701/ClipShow-CN/releases/tag/v0.4.0-cn-12
 
 直接下载：
-- Full：https://github.com/youzhi1701/ClipShow-CN/releases/download/v0.4.0-cn-10/ClipShow-CN-0.4.0-full-setup.exe
-- Lite：https://github.com/youzhi1701/ClipShow-CN/releases/download/v0.4.0-cn-10/ClipShow-CN-0.4.0-lite-setup.exe
+- Full：https://github.com/youzhi1701/ClipShow-CN/releases/download/v0.4.0-cn-12/ClipShow-CN-0.4.0-full-setup.exe
+- Lite：https://github.com/youzhi1701/ClipShow-CN/releases/download/v0.4.0-cn-12/ClipShow-CN-0.4.0-lite-setup.exe
+
+## SHA256 校验
+
+- Full：`c9678b71be7b590f065d0a8152f9a087a69c17a96433e88d7628a41c34659490`
+- Lite：`0056d240ae03151a735d643ffdc1fbec6990e0e557402ebb5137ab54da38f64a`
 
 ## Windows 使用
 
