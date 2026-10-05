@@ -28,6 +28,16 @@ DEFAULT_NEGATIVE_PROMPTS = [
     "black screen",
 ]
 
+DISPLAY_TRANSLATIONS = {
+    "exciting moment": "精彩时刻",
+    "people laughing": "人物欢笑",
+    "beautiful scenery": "优美风景",
+    "boring static shot": "无聊的静态镜头",
+    "blank wall": "空白墙面",
+    "empty room": "空房间",
+    "black screen": "黑屏",
+}
+
 
 class _PromptRow(QWidget):
     """Single row in the prompt list: text label + remove button."""
@@ -38,7 +48,7 @@ class _PromptRow(QWidget):
         super().__init__(parent)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(4, 1, 4, 1)
-        label = QLabel(text)
+        label = QLabel(DISPLAY_TRANSLATIONS.get(text, text))
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         remove_btn = QPushButton("\u00d7")  # multiplication sign as "x"
         remove_btn.setFixedSize(20, 20)
