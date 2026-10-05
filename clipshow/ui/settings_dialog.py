@@ -43,7 +43,7 @@ class SettingsDialog(QDialog):
 
     def __init__(self, settings: Settings, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setWindowTitle("Preferences")
+        self.setWindowTitle("偏好设置")
         self.setMinimumSize(500, 550)
         self.settings = settings
         self._snapshot = asdict(settings)
@@ -58,7 +58,7 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # ── Detector Weights ──────────────────────────────────────
-        weights_group = QGroupBox("Detector Weights")
+        weights_group = QGroupBox("检测器权重")
         weights_layout = QFormLayout()
         for name in DETECTOR_NAMES:
             slider = QSlider(Qt.Orientation.Horizontal)
@@ -67,7 +67,7 @@ class SettingsDialog(QDialog):
             row = QHBoxLayout()
             row.addWidget(slider)
             row.addWidget(label)
-            weights_layout.addRow(f"{name.capitalize()}:", row)
+            weights_layout.addRow({"scene":"场景：","audio":"音频：","motion":"运动：","semantic":"语义：","emotion":"表情："}.get(name, f"{name}："), row)
             self._weight_sliders[name] = slider
             self._weight_labels[name] = label
             slider.valueChanged.connect(
@@ -77,14 +77,14 @@ class SettingsDialog(QDialog):
         layout.addWidget(weights_group)
 
         # ── Semantic Prompts ──────────────────────────────────────
-        prompts_group = QGroupBox("Semantic Prompts")
+        prompts_group = QGroupBox("语义提示词")
         prompts_layout = QVBoxLayout()
 
-        prompts_layout.addWidget(QLabel("Positive (what to look for):"))
+        prompts_layout.addWidget(QLabel("正向提示词（要寻找的内容）："))
         self.prompt_editor = PromptEditor(self.settings.semantic_prompts)
         prompts_layout.addWidget(self.prompt_editor)
 
-        prompts_layout.addWidget(QLabel("Negative (what to ignore):"))
+        prompts_layout.addWidget(QLabel("负向提示词（要忽略的内容）："))
         self.negative_prompt_editor = PromptEditor(
             self.settings.semantic_negative_prompts,
             default_prompts=DEFAULT_NEGATIVE_PROMPTS,
@@ -95,7 +95,7 @@ class SettingsDialog(QDialog):
         layout.addWidget(prompts_group)
 
         # ── Segment Selection ─────────────────────────────────────
-        segment_group = QGroupBox("Segment Selection")
+        segment_group = QGroupBox("片段选择")
         segment_layout = QFormLayout()
 
         self.threshold_slider = QSlider(Qt.Orientation.Horizontal)
@@ -104,43 +104,43 @@ class SettingsDialog(QDialog):
         row = QHBoxLayout()
         row.addWidget(self.threshold_slider)
         row.addWidget(self.threshold_label)
-        segment_layout.addRow("Score threshold:", row)
+        segment_layout.addRow("评分阈值：", row)
         self.threshold_slider.valueChanged.connect(self._on_threshold_slider)
 
         self.pre_padding_spin = QDoubleSpinBox()
         self.pre_padding_spin.setRange(0.0, 10.0)
         self.pre_padding_spin.setSingleStep(0.5)
         self.pre_padding_spin.setSuffix(" s")
-        segment_layout.addRow("Pre-padding:", self.pre_padding_spin)
+        segment_layout.addRow("前置扩展：", self.pre_padding_spin)
 
         self.post_padding_spin = QDoubleSpinBox()
         self.post_padding_spin.setRange(0.0, 10.0)
         self.post_padding_spin.setSingleStep(0.5)
         self.post_padding_spin.setSuffix(" s")
-        segment_layout.addRow("Post-padding:", self.post_padding_spin)
+        segment_layout.addRow("后置扩展：", self.post_padding_spin)
 
         self.min_duration_spin = QDoubleSpinBox()
         self.min_duration_spin.setRange(0.1, 60.0)
         self.min_duration_spin.setSingleStep(0.5)
         self.min_duration_spin.setSuffix(" s")
-        segment_layout.addRow("Min duration:", self.min_duration_spin)
+        segment_layout.addRow("最短时长：", self.min_duration_spin)
 
         self.max_duration_spin = QDoubleSpinBox()
         self.max_duration_spin.setRange(1.0, 300.0)
         self.max_duration_spin.setSingleStep(1.0)
         self.max_duration_spin.setSuffix(" s")
-        segment_layout.addRow("Max duration:", self.max_duration_spin)
+        segment_layout.addRow("最长时长：", self.max_duration_spin)
 
         segment_group.setLayout(segment_layout)
         layout.addWidget(segment_group)
 
         # ── Output Settings ───────────────────────────────────────
-        output_group = QGroupBox("Output Settings")
+        output_group = QGroupBox("输出设置")
         output_layout = QFormLayout()
 
         self.codec_combo = QComboBox()
         self.codec_combo.addItems(CODEC_OPTIONS)
-        output_layout.addRow("Codec:", self.codec_combo)
+        output_layout.addRow("编码器：", self.codec_combo)
 
         self.fps_spin = QDoubleSpinBox()
         self.fps_spin.setRange(1.0, 120.0)
@@ -148,22 +148,22 @@ class SettingsDialog(QDialog):
         output_layout.addRow("FPS:", self.fps_spin)
 
         self.bitrate_edit = QLineEdit()
-        self.bitrate_edit.setPlaceholderText("e.g. 8M")
-        output_layout.addRow("Bitrate:", self.bitrate_edit)
+        self.bitrate_edit.setPlaceholderText("例如：8M")
+        output_layout.addRow("码率：", self.bitrate_edit)
 
         self.workers_spin = QSpinBox()
         self.workers_spin.setRange(0, 64)
-        self.workers_spin.setSpecialValueText("Auto (CPU count)")
-        output_layout.addRow("Max workers:", self.workers_spin)
+        self.workers_spin.setSpecialValueText("自动（按 CPU 核心数）")
+        output_layout.addRow("最大并行任务数：", self.workers_spin)
 
         output_group.setLayout(output_layout)
         layout.addWidget(output_group)
 
         # ── Buttons ───────────────────────────────────────────────
         btn_row = QHBoxLayout()
-        self.reset_button = QPushButton("Reset to Defaults")
-        self.save_button = QPushButton("Save")
-        self.cancel_button = QPushButton("Cancel")
+        self.reset_button = QPushButton("恢复默认")
+        self.save_button = QPushButton("保存")
+        self.cancel_button = QPushButton("取消")
         self.save_button.setDefault(True)
         btn_row.addWidget(self.reset_button)
         btn_row.addStretch()
