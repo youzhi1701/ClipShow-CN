@@ -9,6 +9,9 @@ temporal smoothing.
 from __future__ import annotations
 
 import importlib
+import os
+import shutil
+import urllib.request
 from pathlib import Path
 
 import cv2
@@ -31,6 +34,61 @@ DEFAULT_NEGATIVE_PROMPTS = [
 ]
 MODEL_DIR = Path.home() / ".clipshow" / "models"
 SAMPLE_FPS = 2  # Sample 2 frames per second
+
+_CLIP_MODEL_URLS = {
+    "clip_image_model_vitb32.onnx": [
+        "https://models.stimma.ai/clip/clip_image_model_vitb32.onnx",
+        (
+            "https://www.modelscope.cn/models/cix/ai_model_hub_25_Q3/"
+            "resolve/master/models/Generative_AI/Image_to_Text/onnx_clip/"
+            "model/clip_visual.onnx"
+        ),
+    ],
+    "clip_text_model_vitb32.onnx": [
+        "https://models.stimma.ai/clip/clip_text_model_vitb32.onnx",
+        (
+            "https://www.modelscope.cn/models/cix/ai_model_hub_25_Q3/"
+            "resolve/master/models/Generative_AI/Image_to_Text/onnx_clip/"
+            "model/clip_text_model_vitb32.onnx"
+        ),
+    ],
+}
+
+
+def _download_model(urls: list[str], dest: Path) -> None:
+    """Download one model atomically, trying mirrors in order."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.is_file() and dest.stat().st_size > 0:
+        return
+
+    errors: list[str] = []
+    tmp = dest.with_name(f"{dest.name}.{os.getpid()}.part")
+    for url in urls:
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "ClipShow-CN/0.4"},
+            )
+            with urllib.request.urlopen(req, timeout=120) as response, open(
+                tmp, "wb"
+            ) as output:
+                shutil.copyfileobj(response, output, length=1024 * 1024)
+            if tmp.stat().st_size <= 0:
+                raise RuntimeError("下载结果为空")
+            os.replace(tmp, dest)
+            return
+        except Exception as exc:
+            tmp.unlink(missing_ok=True)
+            errors.append(f"{url}: {exc}")
+
+    raise RuntimeError(
+        "CLIP 模型下载失败，请检查网络后重试。\n" + "\n".join(errors)
+    )
+
+
+def _ensure_clip_models(cache_dir: Path) -> None:
+    for filename, urls in _CLIP_MODEL_URLS.items():
+        _download_model(urls, cache_dir / filename)
 
 # Sigmoid normalization parameters for CLIP cosine similarities.
 # Raw scores are typically 0.15-0.35 for real matches; this sigmoid
@@ -79,7 +137,31 @@ class SemanticDetector(Detector):
 
         ort.set_default_logger_severity(3)  # 3 = ERROR only
         MODEL_DIR.mkdir(parents=True, exist_ok=True)
-        self._model = onnx_clip.OnnxClip(batch_size=1)
+
+        # Full builds bundle the CLIP weights inside onnx_clip/data. Lite builds
+        # download them once to ~/.clipshow/models using maintained mirrors.
+        try:
+            onnx_clip_model = importlib.import_module("onnx_clip.model")
+            package_data = Path(onnx_clip_model.__file__).resolve().parent / "data"
+            bundled_files = [
+                package_data / "clip_image_model_vitb32.onnx",
+                package_data / "clip_text_model_vitb32.onnx",
+            ]
+            has_bundled_models = all(
+                path.is_file() and path.stat().st_size > 0 for path in bundled_files
+            )
+        except (ImportError, OSError):
+            has_bundled_models = False
+
+        if has_bundled_models:
+            self._model = onnx_clip.OnnxClip(batch_size=1, silent_download=True)
+        else:
+            _ensure_clip_models(MODEL_DIR)
+            self._model = onnx_clip.OnnxClip(
+                batch_size=1,
+                silent_download=True,
+                cache_dir=str(MODEL_DIR),
+            )
         return self._model
 
     def detect(
