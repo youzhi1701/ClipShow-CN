@@ -60,7 +60,7 @@ class ExportPanel(QWidget):
 
         self.fps_spin = QSpinBox()
         self.fps_spin.setRange(1, 120)
-        settings_layout.addRow("FPS:", self.fps_spin)
+        settings_layout.addRow("帧率 (FPS)：", self.fps_spin)
 
         self.bitrate_edit = QLineEdit()
         settings_layout.addRow("码率：", self.bitrate_edit)
