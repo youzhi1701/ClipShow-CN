@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+tests/baselines/*_diff.png
+tests/fixtures/videos/*.mp4
+tests/fixtures/videos/*.mov
+tests/fixtures/videos/*.mkv
+tests/fixtures/videos/*.avi
+tests/fixtures/videos/*.webm
+.coverage
+htmlcov/
+.pytest_cache/
+
+# PyInstaller
+*.spec.bak
+
+# Models (downloaded on first use)
+models/
+
+# Static ffmpeg binaries (downloaded during Flatpak build)
+ffmpeg-bin/
