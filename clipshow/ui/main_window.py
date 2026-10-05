@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
-        self.setWindowTitle("ClipShow")
+        self.setWindowTitle("ClipShow 中文版")
         self.setMinimumSize(800, 600)
 
         self.project = project or Project()
@@ -51,10 +51,10 @@ class MainWindow(QMainWindow):
         self.review_panel = ReviewPanel()
         self.export_panel = ExportPanel(self.project.export_settings)
 
-        self.tabs.addTab(self.import_panel, "1. Import")
-        self.tabs.addTab(self.analyze_panel, "2. Analyze")
-        self.tabs.addTab(self.review_panel, "3. Review")
-        self.tabs.addTab(self.export_panel, "4. Export")
+        self.tabs.addTab(self.import_panel, "1. 导入")
+        self.tabs.addTab(self.analyze_panel, "2. 分析")
+        self.tabs.addTab(self.review_panel, "3. 审阅")
+        self.tabs.addTab(self.export_panel, "4. 导出")
 
         # Disable all tabs except Import initially
         for i in range(1, self.tabs.count()):
@@ -62,8 +62,8 @@ class MainWindow(QMainWindow):
 
         # Navigation buttons
         nav_layout = QHBoxLayout()
-        self.back_button = QPushButton("Back")
-        self.next_button = QPushButton("Next")
+        self.back_button = QPushButton("上一步")
+        self.next_button = QPushButton("下一步")
 
         self.back_button.setEnabled(False)
         self.next_button.setEnabled(False)  # disabled until files imported
@@ -74,8 +74,8 @@ class MainWindow(QMainWindow):
 
         # Menu bar
         menu_bar = self.menuBar()
-        edit_menu = menu_bar.addMenu("Edit")
-        self.preferences_action = edit_menu.addAction("Preferences…")
+        edit_menu = menu_bar.addMenu("编辑")
+        self.preferences_action = edit_menu.addAction("偏好设置…")
         self.preferences_action.triggered.connect(self._open_preferences)
 
         # Connect signals
