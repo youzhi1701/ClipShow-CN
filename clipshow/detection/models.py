@@ -57,7 +57,7 @@ class ModelManager:
     def ensure_model(self, name: str, progress_cb=None) -> Path:
         """Download model if not cached, return local path."""
         if name not in MODEL_REGISTRY:
-            raise KeyError(f"Unknown model: {name!r}")
+            raise KeyError(f"未知模型：{name!r}")
 
         meta = MODEL_REGISTRY[name]
         model_path = self.cache_dir / meta["file"]
