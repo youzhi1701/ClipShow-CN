@@ -1,0 +1,119 @@
+name: Windows 中文版发布
+
+on:
+  push:
+    branches:
+      - release-cn
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: clipshow-cn-windows-release
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [lite, full]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install FFmpeg
+        run: choco install ffmpeg -y
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -e ".[all]"
+          uv pip install --system pyinstaller ruff
+
+      - name: Validate Chinese UI
+        shell: pwsh
+        run: |
+          python -m compileall -q clipshow
+          ruff check clipshow/ scripts/check_chinese_ui.py
+          $env:QT_QPA_PLATFORM="offscreen"
+          python scripts/check_chinese_ui.py
+
+      - name: Download models for full build
+        if: matrix.variant == 'full'
+        run: python packaging/download_models.py
+
+      - name: Build Windows executable
+        shell: pwsh
+        run: |
+          if ("${{ matrix.variant }}" -eq "full") {
+            $env:CLIPSHOW_BUNDLE_MODELS="1"
+          } else {
+            $env:CLIPSHOW_BUNDLE_MODELS="0"
+          }
+          pyinstaller packaging/clipshow_windows.spec --noconfirm
+
+      - name: Extract version
+        id: version
+        shell: pwsh
+        run: |
+          $ver = python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])"
+          "ver=$ver" >> $env:GITHUB_OUTPUT
+
+      - name: Build Chinese installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
+        with:
+          path: packaging/installer.iss
+          options: /DAppVer=${{ steps.version.outputs.ver }}
+
+      - name: Rename installer
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem "packaging/Output/ClipShow-*-setup.exe" | Select-Object -First 1
+          $dst = "packaging/Output/ClipShow-CN-${{ steps.version.outputs.ver }}-${{ matrix.variant }}-setup.exe"
+          Move-Item $src.FullName $dst
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClipShow-CN-windows-${{ matrix.variant }}
+          path: packaging/Output/ClipShow-CN-*-setup.exe
+
+  create-release:
+    needs: build-windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Lite
+        uses: actions/download-artifact@v4
+        with:
+          name: ClipShow-CN-windows-lite
+          path: artifacts
+
+      - name: Download Full
+        uses: actions/download-artifact@v4
+        with:
+          name: ClipShow-CN-windows-full
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.4.0-cn-${{ github.run_number }}
+          name: ClipShow 中文版 v0.4.0-cn-${{ github.run_number }}
+          body: |
+            ClipShow 简体中文本地化版本。
+
+            - Lite：体积较小，模型按需下载
+            - Full：包含相关模型，安装后可直接使用
+            - 已汉化主界面、导入、分析、审阅、导出、偏好设置、运行状态与 Windows 安装程序
+          files: |
+            artifacts/*.exe
