@@ -11,6 +11,20 @@ ClipShow-CN 是基于开源项目 **ClipShow** 制作的简体中文本地化版
 - 默认语义提示词：界面显示中文，但内部仍保留原始英文提示词，避免影响 CLIP 语义检测效果
 - CI：包含 Python 语法检查、Ruff 检查、中文界面残留扫描和 PySide6 GUI 冒烟启动检查
 
+## 下载 Windows 中文版
+
+最新稳定构建：**v0.4.0-cn-10**
+
+- **Full 完整版（推荐）**：约 497 MB，已内置 CLIP 语义模型，安装后更省事。
+- **Lite 精简版**：约 170 MB，不内置 CLIP 模型；首次启用语义分析时会自动下载并缓存模型。
+
+Release 页面：
+https://github.com/youzhi1701/ClipShow-CN/releases/tag/v0.4.0-cn-10
+
+直接下载：
+- Full：https://github.com/youzhi1701/ClipShow-CN/releases/download/v0.4.0-cn-10/ClipShow-CN-0.4.0-full-setup.exe
+- Lite：https://github.com/youzhi1701/ClipShow-CN/releases/download/v0.4.0-cn-10/ClipShow-CN-0.4.0-lite-setup.exe
+
 ## Windows 使用
 
 正式构建会生成两种 Windows 安装包：
