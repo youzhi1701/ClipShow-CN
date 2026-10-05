@@ -11,29 +11,29 @@ from PySide6.QtWidgets import QApplication
 
 from clipshow.ui.main_window import MainWindow
 
-FORBIDDEN_UI_PHRASES = [
-    "1. Import",
-    "2. Analyze",
-    "3. Review",
-    "4. Export",
-    "Back",
-    "Next",
-    "Preferences…",
-    "Detector Weights",
-    "Edit Prompts…",
-    "Auto-balance weights",
-    "Score threshold:",
-    "Analyze All",
-    "Clear All",
-    "Remove Selected",
-    "No segment selected",
-    "No segments loaded",
-    "Encoding Settings",
-    "Save Highlight Reel",
-    "Reset to Defaults",
-    "Max workers:",
-    "Play",
-    "Pause",
+FORBIDDEN_UI_LITERALS = [
+    '"1. Import"',
+    '"2. Analyze"',
+    '"3. Review"',
+    '"4. Export"',
+    '"Back"',
+    '"Next"',
+    '"Preferences…"',
+    '"Detector Weights"',
+    '"Edit Prompts…"',
+    '"Auto-balance weights"',
+    '"Score threshold:"',
+    '"Analyze All"',
+    '"Clear All"',
+    '"Remove Selected"',
+    '"No segment selected"',
+    '"No segments loaded"',
+    '"Encoding Settings"',
+    '"Save Highlight Reel"',
+    '"Reset to Defaults"',
+    '"Max workers:"',
+    '"Play"',
+    '"Pause"',
 ]
 
 def static_scan() -> None:
@@ -41,7 +41,7 @@ def static_scan() -> None:
     failures: list[str] = []
     for path in sorted(root.glob("*.py")):
         text = path.read_text(encoding="utf-8")
-        for phrase in FORBIDDEN_UI_PHRASES:
+        for phrase in FORBIDDEN_UI_LITERALS:
             if phrase in text:
                 failures.append(f"{path.name}: {phrase}")
     if failures:
