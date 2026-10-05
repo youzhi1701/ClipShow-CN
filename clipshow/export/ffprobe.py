@@ -16,7 +16,7 @@ def probe(video_path: str) -> dict:
     """
     path = Path(video_path)
     if not path.exists():
-        raise FileNotFoundError(f"Video file not found: {video_path}")
+        raise FileNotFoundError(f"找不到视频文件：{video_path}")
 
     try:
         result = subprocess.run(
@@ -39,12 +39,12 @@ def probe(video_path: str) -> dict:
         )
 
     if result.returncode != 0:
-        raise RuntimeError(f"ffprobe failed: {result.stderr.strip()}")
+        raise RuntimeError(f"ffprobe 执行失败：{result.stderr.strip()}")
 
     try:
         data = json.loads(result.stdout)
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"ffprobe returned invalid JSON: {e}")
+        raise RuntimeError(f"ffprobe 返回了无效的 JSON：{e}")
 
     return data
 
@@ -58,7 +58,7 @@ def get_video_stream(data: dict) -> dict:
     for stream in data.get("streams", []):
         if stream.get("codec_type") == "video":
             return stream
-    raise RuntimeError("No video stream found in file")
+    raise RuntimeError("文件中未找到视频流")
 
 
 def extract_metadata(video_path: str) -> VideoSource:
