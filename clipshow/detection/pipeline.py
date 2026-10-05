@@ -137,7 +137,8 @@ class DetectionPipeline:
             except Exception as exc:
                 # Optional detector failed (missing dep, model load error, etc.) — skip
                 if warning_callback:
-                    warning_callback(f"{name.title()} detector skipped: {exc}")
+                    detector_name = {"scene": "场景", "audio": "音频", "motion": "运动", "semantic": "语义", "emotion": "表情", "audiovisual": "音视频"}.get(name, name)
+                        warning_callback(f"{detector_name}检测器已跳过：{exc}")
                 continue
 
             if len(result.scores) > 0:
