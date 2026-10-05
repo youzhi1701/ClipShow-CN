@@ -25,7 +25,7 @@ COL_END = 3
 COL_DURATION = 4
 COL_SCORE = 5
 COL_DETECTORS = 6
-_COLUMN_HEADERS = ["", "File", "Start", "End", "Duration", "Score", "Detectors"]
+_COLUMN_HEADERS = ["", "文件", "开始", "结束", "时长", "评分", "检测器"]
 
 
 class SegmentList(QWidget):
@@ -115,7 +115,8 @@ class SegmentList(QWidget):
 
         # Detectors
         if seg.detectors:
-            tags = ", ".join(d.capitalize() for d in seg.detectors)
+            detector_names = {"scene": "场景", "audio": "音频", "motion": "运动", "semantic": "语义", "emotion": "表情"}
+            tags = "、".join(detector_names.get(d, d) for d in seg.detectors)
         else:
             tags = ""
         self.table_widget.setItem(row, COL_DETECTORS, QTableWidgetItem(tags))
