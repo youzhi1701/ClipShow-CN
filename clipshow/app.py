@@ -72,7 +72,10 @@ def run_auto_mode(
             source = extract_metadata(path)
             sources.append(source)
             if not headless:
-                print(f"  已加载：{path}（{source.duration:.1f} 秒，{source.width}x{source.height}）")
+                print(
+                    f"  已加载：{path}（{source.duration:.1f} 秒，"
+                    f"{source.width}x{source.height}）"
+                )
         except (FileNotFoundError, RuntimeError) as e:
             print(f"错误：读取 {path} 失败：{e}", file=sys.stderr)
             return 1
