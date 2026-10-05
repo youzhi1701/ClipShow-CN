@@ -5,6 +5,8 @@ pick them up. Also downloads CLIP models into the onnx_clip package data
 directory so collect_data_files() includes them.
 """
 
+import os
+import shutil
 import urllib.request
 from pathlib import Path
 
@@ -16,23 +18,61 @@ MODELS = {
 }
 
 CLIP_MODELS = {
-    "clip_image_model_vitb32.onnx": (
-        "https://lakera-clip.s3.eu-west-1.amazonaws.com/clip_image_model_vitb32.onnx"
-    ),
-    "clip_text_model_vitb32.onnx": (
-        "https://lakera-clip.s3.eu-west-1.amazonaws.com/clip_text_model_vitb32.onnx"
-    ),
+    "clip_image_model_vitb32.onnx": [
+        "https://models.stimma.ai/clip/clip_image_model_vitb32.onnx",
+        (
+            "https://www.modelscope.cn/models/cix/ai_model_hub_25_Q3/"
+            "resolve/master/models/Generative_AI/Image_to_Text/onnx_clip/"
+            "model/clip_visual.onnx"
+        ),
+    ],
+    "clip_text_model_vitb32.onnx": [
+        "https://models.stimma.ai/clip/clip_text_model_vitb32.onnx",
+        (
+            "https://www.modelscope.cn/models/cix/ai_model_hub_25_Q3/"
+            "resolve/master/models/Generative_AI/Image_to_Text/onnx_clip/"
+            "model/clip_text_model_vitb32.onnx"
+        ),
+    ],
 }
 
 
-def download(url: str, dest: Path) -> None:
+def download(urls: str | list[str], dest: Path) -> None:
     if dest.exists() and dest.stat().st_size > 0:
         print(f"  Already exists: {dest} ({dest.stat().st_size / 1024 / 1024:.1f}MB)")
         return
+
+    if isinstance(urls, str):
+        urls = [urls]
+
     print(f"  Downloading: {dest.name} ...")
     dest.parent.mkdir(parents=True, exist_ok=True)
-    urllib.request.urlretrieve(url, dest)
-    print(f"  Done: {dest.stat().st_size / 1024 / 1024:.1f}MB")
+    tmp = dest.with_name(f"{dest.name}.{os.getpid()}.part")
+    errors: list[str] = []
+
+    for url in urls:
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "ClipShow-CN/0.4"},
+            )
+            with urllib.request.urlopen(req, timeout=180) as response, open(
+                tmp, "wb"
+            ) as output:
+                shutil.copyfileobj(response, output, length=1024 * 1024)
+            if tmp.stat().st_size <= 0:
+                raise RuntimeError("downloaded file is empty")
+            os.replace(tmp, dest)
+            print(f"  Done: {dest.stat().st_size / 1024 / 1024:.1f}MB")
+            return
+        except Exception as exc:
+            tmp.unlink(missing_ok=True)
+            errors.append(f"{url}: {exc}")
+
+    raise RuntimeError(
+        f"Failed to download {dest.name} from all mirrors:\n"
+        + "\n".join(errors)
+    )
 
 
 def main():
@@ -54,8 +94,8 @@ def main():
         print("WARNING: onnx_clip not installed, skipping CLIP model download")
         return
 
-    for filename, url in CLIP_MODELS.items():
-        download(url, onnx_clip_data / filename)
+    for filename, urls in CLIP_MODELS.items():
+        download(urls, onnx_clip_data / filename)
 
     print("\nAll models downloaded successfully.")
     total = sum(
