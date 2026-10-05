@@ -45,17 +45,17 @@ class ExportPanel(QWidget):
         layout = QVBoxLayout(self)
 
         # Output path
-        path_group = QGroupBox("Output")
+        path_group = QGroupBox("输出")
         path_layout = QHBoxLayout()
         self.path_edit = QLineEdit()
-        self.browse_button = QPushButton("Browse...")
+        self.browse_button = QPushButton("浏览...")
         path_layout.addWidget(self.path_edit)
         path_layout.addWidget(self.browse_button)
         path_group.setLayout(path_layout)
         layout.addWidget(path_group)
 
         # Settings
-        settings_group = QGroupBox("Encoding Settings")
+        settings_group = QGroupBox("编码设置")
         settings_layout = QFormLayout()
 
         self.fps_spin = QSpinBox()
@@ -63,13 +63,13 @@ class ExportPanel(QWidget):
         settings_layout.addRow("FPS:", self.fps_spin)
 
         self.bitrate_edit = QLineEdit()
-        settings_layout.addRow("Bitrate:", self.bitrate_edit)
+        settings_layout.addRow("码率：", self.bitrate_edit)
 
         settings_group.setLayout(settings_layout)
         layout.addWidget(settings_group)
 
         # Summary
-        self.summary_label = QLabel("No segments loaded")
+        self.summary_label = QLabel("尚未加载片段")
         layout.addWidget(self.summary_label)
 
         # Progress
@@ -80,8 +80,8 @@ class ExportPanel(QWidget):
 
         # Buttons
         btn_layout = QHBoxLayout()
-        self.export_button = QPushButton("Export")
-        self.cancel_button = QPushButton("Cancel")
+        self.export_button = QPushButton("导出")
+        self.cancel_button = QPushButton("取消")
         self.export_button.setEnabled(False)
         self.cancel_button.setEnabled(False)
         btn_layout.addStretch()
@@ -106,9 +106,9 @@ class ExportPanel(QWidget):
     def _browse_output(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Save Highlight Reel",
+            "保存精彩集锦",
             self.export_settings.output_path,
-            "Video Files (*.mp4);;All Files (*)",
+            "视频文件 (*.mp4);;所有文件 (*)",
         )
         if path:
             self.path_edit.setText(path)
@@ -128,7 +128,7 @@ class ExportPanel(QWidget):
         included = [s for s in segments if s.included]
         total_duration = sum(s.duration for s in included)
         self.summary_label.setText(
-            f"{len(included)} segments, {total_duration:.1f}s total"
+            f"{len(included)} 个片段，总时长 {total_duration:.1f} 秒"
         )
         self.export_button.setEnabled(len(included) > 0)
 
