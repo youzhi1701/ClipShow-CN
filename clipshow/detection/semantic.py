@@ -92,7 +92,7 @@ class SemanticDetector(Detector):
 
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            raise RuntimeError(f"Cannot open video: {video_path}")
+            raise RuntimeError(f"无法打开视频：{video_path}")
 
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
