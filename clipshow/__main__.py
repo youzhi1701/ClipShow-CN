@@ -9,40 +9,40 @@ from clipshow import __version__
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="clipshow",
-        description="Automatic highlight reel generator from video clips",
+        description="从视频素材中自动生成高光集锦",
     )
     parser.add_argument(
         "files",
         nargs="*",
-        help="Video files to process",
+        help="要处理的视频文件",
     )
     parser.add_argument(
         "--auto",
         action="store_true",
-        help="Run in automatic mode (no full UI)",
+        help="以自动模式运行（不打开完整界面）",
     )
     parser.add_argument(
         "--headless",
         action="store_true",
-        help="Suppress all GUI (for scripting/batch use, implies --auto)",
+        help="完全不显示图形界面（用于脚本/批处理，自动启用 --auto）",
     )
     parser.add_argument(
         "--output", "-o",
         type=str,
         default=None,
-        help="Output file path (default: highlight_reel.mp4)",
+        help="输出文件路径（默认：highlight_reel.mp4）",
     )
     parser.add_argument(
         "--workers", "-j",
         type=int,
         default=None,
-        help="Number of parallel workers (default: auto = CPU count)",
+        help="并行任务数量（默认：自动按 CPU 核心数）",
     )
     parser.add_argument(
         "--config", "-c",
         type=str,
         default=None,
-        help="Path to a YAML pipeline configuration file",
+        help="YAML 流程配置文件路径",
     )
     parser.add_argument(
         "--version",
