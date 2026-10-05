@@ -46,11 +46,11 @@ class ReviewPanel(QWidget):
 
         # Trim controls
         trim_layout = QHBoxLayout()
-        self.trim_start_minus = QPushButton("Start -0.5s")
-        self.trim_start_plus = QPushButton("Start +0.5s")
-        self.trim_end_minus = QPushButton("End -0.5s")
-        self.trim_end_plus = QPushButton("End +0.5s")
-        self.trim_label = QLabel("No segment selected")
+        self.trim_start_minus = QPushButton("起点 -0.5秒")
+        self.trim_start_plus = QPushButton("起点 +0.5秒")
+        self.trim_end_minus = QPushButton("终点 -0.5秒")
+        self.trim_end_plus = QPushButton("终点 +0.5秒")
+        self.trim_label = QLabel("未选择片段")
 
         trim_layout.addWidget(self.trim_start_minus)
         trim_layout.addWidget(self.trim_start_plus)
@@ -118,7 +118,7 @@ class ReviewPanel(QWidget):
                 f"({seg.duration:.1f}s)"
             )
         else:
-            self.trim_label.setText("No segment selected")
+            self.trim_label.setText("未选择片段")
 
     def _set_trim_enabled(self, enabled: bool) -> None:
         self.trim_start_minus.setEnabled(enabled)
