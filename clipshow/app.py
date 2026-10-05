@@ -12,7 +12,7 @@ def run_gui(files: list[str] | None = None) -> int:
     from clipshow.ui.main_window import MainWindow
 
     app = QApplication(sys.argv)
-    app.setApplicationName("ClipShow")
+    app.setApplicationName("ClipShow 中文版")
     app.setOrganizationName("ClipShow")
 
     window = MainWindow()
@@ -39,7 +39,7 @@ def run_auto_mode(
     Returns 0 on success, 1 on failure.
     """
     if not files:
-        print("Error: no input files specified", file=sys.stderr)
+        print("错误：未指定输入视频文件", file=sys.stderr)
         return 1
 
     from clipshow.config import Settings
@@ -72,28 +72,28 @@ def run_auto_mode(
             source = extract_metadata(path)
             sources.append(source)
             if not headless:
-                print(f"  Loaded: {path} ({source.duration:.1f}s, {source.width}x{source.height})")
+                print(f"  已加载：{path}（{source.duration:.1f} 秒，{source.width}x{source.height}）")
         except (FileNotFoundError, RuntimeError) as e:
-            print(f"Error: failed to read {path}: {e}", file=sys.stderr)
+            print(f"错误：读取 {path} 失败：{e}", file=sys.stderr)
             return 1
 
     # Step 2: Run detection pipeline
     if not headless:
-        print("Analyzing videos...")
+        print("正在分析视频...")
 
     video_paths = [(s.path, s.duration) for s in sources]
 
     def on_progress(p: float) -> None:
         if not headless:
-            print(f"  Progress: {p:.0%}", end="\r")
+            print(f"  进度：{p:.0%}", end="\r")
 
     moments = pipeline.analyze_all(video_paths, progress_callback=on_progress)
 
     if not headless:
-        print(f"\n  Found {len(moments)} interesting moments")
+        print(f"\n  找到 {len(moments)} 个候选高光时刻")
 
     if not moments:
-        print("No interesting moments detected. Try lowering the threshold.", file=sys.stderr)
+        print("未检测到高光时刻，请尝试降低评分阈值。", file=sys.stderr)
         return 1
 
     # Step 3: Convert to segments, sorted chronologically
@@ -105,7 +105,7 @@ def run_auto_mode(
     # Step 4: Assemble output
     if not headless:
         total_dur = sum(s.duration for s in segments)
-        print(f"Assembling {len(segments)} segments ({total_dur:.1f}s total)...")
+        print(f"正在合成 {len(segments)} 个片段（总时长 {total_dur:.1f} 秒）...")
 
     try:
         assemble_highlights(
@@ -116,10 +116,10 @@ def run_auto_mode(
             bitrate=settings.output_bitrate,
         )
     except (ValueError, RuntimeError) as e:
-        print(f"Error: export failed: {e}", file=sys.stderr)
+        print(f"错误：导出失败：{e}", file=sys.stderr)
         return 1
 
     if not headless:
-        print(f"Done! Output saved to: {output_path}")
+        print(f"完成！文件已保存到：{output_path}")
 
     return 0
