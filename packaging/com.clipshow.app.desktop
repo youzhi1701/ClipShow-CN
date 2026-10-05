@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=ClipShow
-Comment=Automatic highlight reel generator from video clips
+Name=ClipShow 中文版
+Comment=从视频素材中自动生成高光集锦
 Exec=clipshow-wrapper
 Icon=com.clipshow.app
 Terminal=false
