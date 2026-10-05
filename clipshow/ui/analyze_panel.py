@@ -81,7 +81,7 @@ class AnalyzePanel(QWidget):
         settings_layout.setContentsMargins(4, 4, 4, 4)
 
         # Detector weights group
-        weights_group = QGroupBox("Detector Weights")
+        weights_group = QGroupBox("检测器权重")
         weights_layout = QFormLayout()
         weights_layout.setContentsMargins(6, 6, 6, 6)
         weights_layout.setVerticalSpacing(4)
@@ -94,7 +94,7 @@ class AnalyzePanel(QWidget):
         row.addWidget(self.scene_check)
         row.addWidget(self.scene_slider)
         row.addWidget(self.scene_label)
-        weights_layout.addRow("Scene:", row)
+        weights_layout.addRow("场景：", row)
 
         self.audio_check = QCheckBox()
         self.audio_slider = QSlider(Qt.Orientation.Horizontal)
@@ -104,7 +104,7 @@ class AnalyzePanel(QWidget):
         row.addWidget(self.audio_check)
         row.addWidget(self.audio_slider)
         row.addWidget(self.audio_label)
-        weights_layout.addRow("Audio:", row)
+        weights_layout.addRow("音频：", row)
 
         self.motion_check = QCheckBox()
         self.motion_slider = QSlider(Qt.Orientation.Horizontal)
@@ -114,19 +114,19 @@ class AnalyzePanel(QWidget):
         row.addWidget(self.motion_check)
         row.addWidget(self.motion_slider)
         row.addWidget(self.motion_label)
-        weights_layout.addRow("Motion:", row)
+        weights_layout.addRow("运动：", row)
 
         self.semantic_check = QCheckBox()
         self.semantic_slider = QSlider(Qt.Orientation.Horizontal)
         self.semantic_slider.setRange(0, SLIDER_SCALE)
         self.semantic_label = QLabel()
-        self.edit_prompts_button = QPushButton("Edit Prompts…")
+        self.edit_prompts_button = QPushButton("编辑提示词…")
         row = QHBoxLayout()
         row.addWidget(self.semantic_check)
         row.addWidget(self.semantic_slider)
         row.addWidget(self.semantic_label)
         row.addWidget(self.edit_prompts_button)
-        weights_layout.addRow("Semantic:", row)
+        weights_layout.addRow("语义：", row)
 
         self.emotion_check = QCheckBox()
         self.emotion_slider = QSlider(Qt.Orientation.Horizontal)
@@ -136,17 +136,17 @@ class AnalyzePanel(QWidget):
         row.addWidget(self.emotion_check)
         row.addWidget(self.emotion_slider)
         row.addWidget(self.emotion_label)
-        weights_layout.addRow("Emotion:", row)
+        weights_layout.addRow("表情：", row)
 
-        self.auto_balance_check = QCheckBox("Auto-balance weights")
+        self.auto_balance_check = QCheckBox("自动平衡权重")
         self.auto_balance_check.setToolTip(
-            "Divide 100% evenly among enabled detectors"
+            "将 100% 权重平均分配给已启用的检测器"
         )
         weights_layout.addRow(self.auto_balance_check)
 
         weights_help = QLabel(
-            "Control how much each detector contributes to the highlight score. "
-            "Higher weight = more influence."
+            "控制各检测器对高光评分的影响程度。"
+            "权重越高，影响越大。"
         )
         weights_help.setWordWrap(True)
         weights_help.setStyleSheet("color: gray;")
@@ -156,7 +156,7 @@ class AnalyzePanel(QWidget):
         settings_layout.addWidget(weights_group)
 
         # Threshold slider
-        threshold_group = QGroupBox("Threshold")
+        threshold_group = QGroupBox("阈值")
         threshold_layout = QFormLayout()
         threshold_layout.setContentsMargins(6, 6, 6, 6)
         threshold_layout.setVerticalSpacing(4)
@@ -167,11 +167,11 @@ class AnalyzePanel(QWidget):
         row = QHBoxLayout()
         row.addWidget(self.threshold_slider)
         row.addWidget(self.threshold_label)
-        threshold_layout.addRow("Score threshold:", row)
+        threshold_layout.addRow("评分阈值：", row)
 
         threshold_help = QLabel(
-            "Minimum combined score for a moment to become a highlight. "
-            "Lower = more highlights, higher = only the best."
+            "片段被判定为高光所需的最低综合评分。"
+            "阈值越低，高光越多；阈值越高，只保留最佳片段。"
         )
         threshold_help.setWordWrap(True)
         threshold_help.setStyleSheet("color: gray;")
@@ -227,8 +227,8 @@ class AnalyzePanel(QWidget):
 
         # Buttons
         btn_layout = QHBoxLayout()
-        self.analyze_button = QPushButton("Analyze All")
-        self.cancel_button = QPushButton("Cancel")
+        self.analyze_button = QPushButton("分析全部")
+        self.cancel_button = QPushButton("取消")
         self.cancel_button.setEnabled(False)
         btn_layout.addStretch()
         btn_layout.addWidget(self.analyze_button)
@@ -360,7 +360,7 @@ class AnalyzePanel(QWidget):
     def _open_prompt_editor(self) -> None:
         """Open a dialog with positive and negative prompt editors."""
         dlg = QDialog(self)
-        dlg.setWindowTitle("Edit Semantic Prompts")
+        dlg.setWindowTitle("编辑语义提示词")
         dlg.setMinimumSize(600, 400)
         # Prevent Enter/Return from closing the dialog (QLineEdit ignores
         # the key event after emitting returnPressed, so it propagates up
@@ -379,13 +379,13 @@ class AnalyzePanel(QWidget):
         columns = QHBoxLayout()
 
         pos_col = QVBoxLayout()
-        pos_col.addWidget(QLabel("Positive Prompts (what to look for):"))
+        pos_col.addWidget(QLabel("正向提示词（要寻找的内容）："))
         pos_editor = PromptEditor(self.settings.semantic_prompts)
         pos_col.addWidget(pos_editor)
         columns.addLayout(pos_col)
 
         neg_col = QVBoxLayout()
-        neg_col.addWidget(QLabel("Negative Prompts (what to ignore):"))
+        neg_col.addWidget(QLabel("负向提示词（要忽略的内容）："))
         neg_editor = PromptEditor(
             self.settings.semantic_negative_prompts,
             default_prompts=DEFAULT_NEGATIVE_PROMPTS,
@@ -397,7 +397,7 @@ class AnalyzePanel(QWidget):
 
         # Clear All button + dialog buttons
         btn_row = QHBoxLayout()
-        clear_all_btn = QPushButton("Clear All")
+        clear_all_btn = QPushButton("全部清空")
         clear_all_btn.clicked.connect(lambda: (pos_editor.clear_all(), neg_editor.clear_all()))
         btn_row.addWidget(clear_all_btn)
         btn_row.addStretch()
@@ -471,7 +471,7 @@ class AnalyzePanel(QWidget):
         self._warnings: list[str] = []
 
         n = self._total_files
-        self.status_label.setText(f"Analyzing {n} video{'s' if n != 1 else ''}...")
+        self.status_label.setText(f"正在分析 {n} 个视频...")
         self.progress_bar.setValue(0)
         self.progress_bar.show()
         self.analyze_button.setEnabled(False)
@@ -484,7 +484,7 @@ class AnalyzePanel(QWidget):
         """Request cancellation of the running worker."""
         if self._worker:
             self._worker.cancel()
-            self.status_label.setText("Cancelling...")
+            self.status_label.setText("正在取消...")
 
     def _on_status(self, message: str) -> None:
         self.status_label.setText(message)
@@ -500,10 +500,10 @@ class AnalyzePanel(QWidget):
     def _format_eta(seconds: float) -> str:
         """Format seconds into a human-readable ETA string."""
         if seconds < 60:
-            return f"~{int(seconds)}s remaining"
+            return f"约剩余 {int(seconds)} 秒"
         minutes = int(seconds) // 60
         secs = int(seconds) % 60
-        return f"~{minutes}m {secs:02d}s remaining"
+        return f"约剩余 {minutes} 分 {secs:02d} 秒"
 
     def _on_progress(self, source_path: str, fraction: float) -> None:
         # Track per-file progress
@@ -530,7 +530,7 @@ class AnalyzePanel(QWidget):
             if self._total_video_duration > 0:
                 processed_duration = self._total_video_duration * overall
                 rate = processed_duration / elapsed
-                rate_str = f"{rate:.1f}x realtime"
+                rate_str = f"{rate:.1f} 倍实时速度"
             eta = elapsed * (1 - overall) / overall
             eta_str = self._format_eta(eta)
 
@@ -538,11 +538,11 @@ class AnalyzePanel(QWidget):
         if active <= 1:
             basename = Path(source_path).name
             desc = (
-                f"Analyzing {basename} "
-                f"({self._completed_files + 1} of {self._total_files})"
+                f"正在分析 {basename} "
+                f"（{self._completed_files + 1}/{self._total_files}）"
             )
         else:
-            desc = f"Analyzing {active} of {self._total_files} clips"
+            desc = f"正在并行分析 {active}/{self._total_files} 个视频"
 
         parts = [desc]
         if rate_str and eta_str:
@@ -563,7 +563,7 @@ class AnalyzePanel(QWidget):
 
         basename = Path(source_path).name
         self.status_label.setText(
-            f"Completed {basename} ({self._completed_files} of {self._total_files})"
+            f"已完成 {basename}（{self._completed_files}/{self._total_files}）"
         )
 
     def _on_frame_preview(self, image: QImage) -> None:
@@ -575,8 +575,8 @@ class AnalyzePanel(QWidget):
         n = self._total_files
         count = len(moments)
         self.status_label.setText(
-            f"Analysis complete \u2014 found {count} highlight{'s' if count != 1 else ''} "
-            f"in {n} video{'s' if n != 1 else ''}"
+            f"分析完成 — 找到 {count} 个高光片段，"
+            f"共分析 {n} 个视频"
         )
         self.progress_bar.hide()
         self.analyze_button.setEnabled(True)
@@ -586,7 +586,7 @@ class AnalyzePanel(QWidget):
         self.analysis_complete.emit(moments)
 
     def _on_error(self, message: str) -> None:
-        self.status_label.setText(f"Error: {message}")
+        self.status_label.setText(f"错误：{message}")
         self.progress_bar.hide()
         self.analyze_button.setEnabled(True)
         self.cancel_button.setEnabled(False)
