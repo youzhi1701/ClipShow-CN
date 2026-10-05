@@ -1,0 +1,55 @@
+app-id: com.clipshow.app
+runtime: org.kde.Platform
+runtime-version: '6.7'
+sdk: org.kde.Sdk
+command: clipshow-wrapper
+
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --socket=pulseaudio
+  - --filesystem=home
+
+build-options:
+  build-args:
+    - --share=network
+
+modules:
+  - name: python3-clipshow
+    buildsystem: simple
+    build-commands:
+      - pip3 install --upgrade pip
+      - pip3 install --prefix=/app --only-binary numpy,scipy,scikit-learn -r requirements-flatpak.txt
+      - pip3 install --prefix=/app --no-deps .
+      - install -Dm755 ffmpeg-bin/ffmpeg /app/bin/ffmpeg
+      - install -Dm755 ffmpeg-bin/ffprobe /app/bin/ffprobe
+    sources:
+      - type: dir
+        path: ..
+
+  - name: clipshow-wrapper
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 clipshow-wrapper.sh /app/bin/clipshow-wrapper
+    sources:
+      - type: script
+        dest-filename: clipshow-wrapper.sh
+        commands:
+          - |
+            #!/bin/bash
+            # Use PySide6's own Qt plugins to avoid conflicts with KDE runtime Qt
+            PYSIDE6_DIR=$(python3 -c "import PySide6; print(PySide6.__path__[0])")
+            export QT_PLUGIN_PATH="${PYSIDE6_DIR}/Qt/plugins"
+            exec python3 -m clipshow "$@"
+
+  - name: desktop-files
+    buildsystem: simple
+    build-commands:
+      - install -Dm644 com.clipshow.app.desktop /app/share/applications/com.clipshow.app.desktop
+      - install -Dm644 com.clipshow.app.metainfo.xml /app/share/metainfo/com.clipshow.app.metainfo.xml
+      - install -Dm644 com.clipshow.app.svg /app/share/icons/hicolor/scalable/apps/com.clipshow.app.svg
+    sources:
+      - type: dir
+        path: .
