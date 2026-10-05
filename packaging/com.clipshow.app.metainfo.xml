@@ -1,29 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>com.clipshow.app</id>
-  <name>ClipShow</name>
-  <summary>Automatic highlight reel generator from video clips</summary>
+  <name>ClipShow 中文版</name>
+  <summary>从视频素材中自动生成高光集锦</summary>
   <metadata_license>MIT</metadata_license>
   <project_license>MIT</project_license>
 
   <description>
     <p>
-      ClipShow turns raw video clips into a highlight reel automatically.
-      It detects interesting moments using scene changes, audio peaks, motion,
-      and optional AI-powered content analysis, then stitches them together.
+      ClipShow 中文版可自动从原始视频素材中筛选高光片段并生成集锦。
+      它综合场景变化、音频峰值、运动信息以及可选的 AI 内容分析来识别精彩时刻。
     </p>
     <p>
-      Features include adjustable detection weights, custom semantic text prompts
-      for CLIP-based content scoring, face/emotion detection, a four-step GUI
-      workflow (Import, Analyze, Review, Export), and a headless CLI mode for
-      batch processing.
+      功能包括可调检测器权重、CLIP 语义提示词、人物表情检测、
+      “导入—分析—审阅—导出”四步工作流，以及用于批量处理的无界面命令行模式。
     </p>
   </description>
 
   <launchable type="desktop-id">com.clipshow.app.desktop</launchable>
 
-  <url type="homepage">https://github.com/borgel/clipshow</url>
-  <url type="bugtracker">https://github.com/borgel/clipshow/issues</url>
+  <url type="homepage">https://github.com/youzhi1701/ClipShow-CN</url>
+  <url type="bugtracker">https://github.com/youzhi1701/ClipShow-CN/issues</url>
 
   <provides>
     <binary>clipshow-wrapper</binary>
@@ -34,7 +31,7 @@
   <releases>
     <release version="0.1.0" date="2026-02-23">
       <description>
-        <p>Initial release with scene, audio, motion, semantic, and emotion detectors.</p>
+        <p>首个版本，包含场景、音频、运动、语义和表情检测器。</p>
       </description>
     </release>
   </releases>
