@@ -99,13 +99,13 @@ class SegmentList(QWidget):
 
         # Start / End / Duration
         self.table_widget.setItem(
-            row, COL_START, QTableWidgetItem(f"{seg.start_time:.1f}s")
+            row, COL_START, QTableWidgetItem(f"{seg.start_time:.1f}秒")
         )
         self.table_widget.setItem(
-            row, COL_END, QTableWidgetItem(f"{seg.end_time:.1f}s")
+            row, COL_END, QTableWidgetItem(f"{seg.end_time:.1f}秒")
         )
         self.table_widget.setItem(
-            row, COL_DURATION, QTableWidgetItem(f"{seg.duration:.1f}s")
+            row, COL_DURATION, QTableWidgetItem(f"{seg.duration:.1f}秒")
         )
 
         # Score
@@ -142,7 +142,7 @@ class SegmentList(QWidget):
                 start_text = self.table_widget.item(i, COL_START).text()
                 for seg in self._segments:
                     name = Path(seg.source_path).name
-                    if name == file_item.text() and f"{seg.start_time:.1f}s" == start_text:
+                    if name == file_item.text() and f"{seg.start_time:.1f}秒" == start_text:
                         new_segments.append(seg)
                         break
         if len(new_segments) == len(self._segments):
