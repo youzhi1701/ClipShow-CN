@@ -30,7 +30,7 @@ class DropArea(QLabel):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setText("Drag && drop video files here\nor click Browse")
+        self.setText("将视频文件拖放到这里\n或点击“浏览”选择")
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setMinimumHeight(100)
         self.setStyleSheet(
@@ -72,13 +72,13 @@ class ImportPanel(QWidget):
         layout.addWidget(self.drop_area)
 
         # Browse button
-        self.browse_button = QPushButton("Browse...")
+        self.browse_button = QPushButton("浏览...")
         layout.addWidget(self.browse_button)
 
         # File table
         self.file_table = QTableWidget(0, 4)
         self.file_table.setHorizontalHeaderLabels(
-            ["Filename", "Duration", "Resolution", "Path"]
+            ["文件名", "时长", "分辨率", "路径"]
         )
         self.file_table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
@@ -95,8 +95,8 @@ class ImportPanel(QWidget):
 
         # Action buttons
         btn_layout = QHBoxLayout()
-        self.remove_button = QPushButton("Remove Selected")
-        self.clear_button = QPushButton("Clear All")
+        self.remove_button = QPushButton("移除选中")
+        self.clear_button = QPushButton("全部清空")
         self.remove_button.setEnabled(False)
         self.clear_button.setEnabled(False)
         btn_layout.addWidget(self.remove_button)
@@ -114,9 +114,9 @@ class ImportPanel(QWidget):
     def _browse(self) -> None:
         paths, _ = QFileDialog.getOpenFileNames(
             self,
-            "Select Video Files",
+            "选择视频文件",
             "",
-            "Video Files (*.mp4 *.mov *.avi *.mkv *.webm *.m4v *.mts);;All Files (*)",
+            "视频文件 (*.mp4 *.mov *.avi *.mkv *.webm *.m4v *.mts);;所有文件 (*)",
         )
         if paths:
             self.add_files(paths)
