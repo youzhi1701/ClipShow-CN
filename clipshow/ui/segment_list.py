@@ -115,7 +115,13 @@ class SegmentList(QWidget):
 
         # Detectors
         if seg.detectors:
-            detector_names = {"scene": "场景", "audio": "音频", "motion": "运动", "semantic": "语义", "emotion": "表情"}
+            detector_names = {
+                "scene": "场景",
+                "audio": "音频",
+                "motion": "运动",
+                "semantic": "语义",
+                "emotion": "表情",
+            }
             tags = "、".join(detector_names.get(d, d) for d in seg.detectors)
         else:
             tags = ""
