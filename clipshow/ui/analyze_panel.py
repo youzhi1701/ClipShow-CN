@@ -1,0 +1,601 @@
+"""Analyze panel: detector settings, progress bars, and analysis control."""
+
+from __future__ import annotations
+
+import time
+from pathlib import Path
+
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QProgressBar,
+    QPushButton,
+    QScrollArea,
+    QSlider,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
+)
+
+from clipshow.config import Settings
+from clipshow.model.project import Project
+from clipshow.ui.prompt_editor import DEFAULT_NEGATIVE_PROMPTS, PromptEditor
+from clipshow.workers.analysis_worker import AnalysisWorker
+
+# Slider scale: sliders are 0-100 integers, mapped to 0.0-1.0 floats
+SLIDER_SCALE = 100
+
+# Status markers for the file list
+_PENDING = "\u2500"  # dash
+_ANALYZING = "\u25B6"  # play triangle
+_COMPLETE = "\u2714"  # checkmark
+
+
+class AnalyzePanel(QWidget):
+    """Panel for configuring detectors and running analysis."""
+
+    analysis_complete = Signal(list)  # list[DetectedMoment]
+    analysis_started = Signal()
+
+    def __init__(
+        self,
+        project: Project,
+        settings: Settings | None = None,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(parent)
+        self.project = project
+        self.settings = settings or Settings()
+        self._worker: AnalysisWorker | None = None
+        self._total_files: int = 0
+        self._completed_files: int = 0
+        self._has_results: bool = False
+        self._analysis_start_time: float = 0.0
+        self._total_video_duration: float = 0.0
+        self._source_paths: list[str] = []
+        self._file_progress: dict[str, float] = {}
+        self._analyzing_paths: set[str] = set()
+        self._setup_ui()
+        self._connect_signals()
+        self._load_settings()
+
+    def _setup_ui(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        layout.addWidget(splitter)
+
+        # --- Top: settings in a scroll area ---
+        settings_widget = QWidget()
+        settings_layout = QVBoxLayout(settings_widget)
+        settings_layout.setContentsMargins(4, 4, 4, 4)
+
+        # Detector weights group
+        weights_group = QGroupBox("Detector Weights")
+        weights_layout = QFormLayout()
+        weights_layout.setContentsMargins(6, 6, 6, 6)
+        weights_layout.setVerticalSpacing(4)
+
+        self.scene_check = QCheckBox()
+        self.scene_slider = QSlider(Qt.Orientation.Horizontal)
+        self.scene_slider.setRange(0, SLIDER_SCALE)
+        self.scene_label = QLabel()
+        row = QHBoxLayout()
+        row.addWidget(self.scene_check)
+        row.addWidget(self.scene_slider)
+        row.addWidget(self.scene_label)
+        weights_layout.addRow("Scene:", row)
+
+        self.audio_check = QCheckBox()
+        self.audio_slider = QSlider(Qt.Orientation.Horizontal)
+        self.audio_slider.setRange(0, SLIDER_SCALE)
+        self.audio_label = QLabel()
+        row = QHBoxLayout()
+        row.addWidget(self.audio_check)
+        row.addWidget(self.audio_slider)
+        row.addWidget(self.audio_label)
+        weights_layout.addRow("Audio:", row)
+
+        self.motion_check = QCheckBox()
+        self.motion_slider = QSlider(Qt.Orientation.Horizontal)
+        self.motion_slider.setRange(0, SLIDER_SCALE)
+        self.motion_label = QLabel()
+        row = QHBoxLayout()
+        row.addWidget(self.motion_check)
+        row.addWidget(self.motion_slider)
+        row.addWidget(self.motion_label)
+        weights_layout.addRow("Motion:", row)
+
+        self.semantic_check = QCheckBox()
+        self.semantic_slider = QSlider(Qt.Orientation.Horizontal)
+        self.semantic_slider.setRange(0, SLIDER_SCALE)
+        self.semantic_label = QLabel()
+        self.edit_prompts_button = QPushButton("Edit Prompts…")
+        row = QHBoxLayout()
+        row.addWidget(self.semantic_check)
+        row.addWidget(self.semantic_slider)
+        row.addWidget(self.semantic_label)
+        row.addWidget(self.edit_prompts_button)
+        weights_layout.addRow("Semantic:", row)
+
+        self.emotion_check = QCheckBox()
+        self.emotion_slider = QSlider(Qt.Orientation.Horizontal)
+        self.emotion_slider.setRange(0, SLIDER_SCALE)
+        self.emotion_label = QLabel()
+        row = QHBoxLayout()
+        row.addWidget(self.emotion_check)
+        row.addWidget(self.emotion_slider)
+        row.addWidget(self.emotion_label)
+        weights_layout.addRow("Emotion:", row)
+
+        self.auto_balance_check = QCheckBox("Auto-balance weights")
+        self.auto_balance_check.setToolTip(
+            "Divide 100% evenly among enabled detectors"
+        )
+        weights_layout.addRow(self.auto_balance_check)
+
+        weights_help = QLabel(
+            "Control how much each detector contributes to the highlight score. "
+            "Higher weight = more influence."
+        )
+        weights_help.setWordWrap(True)
+        weights_help.setStyleSheet("color: gray;")
+        weights_layout.addRow(weights_help)
+
+        weights_group.setLayout(weights_layout)
+        settings_layout.addWidget(weights_group)
+
+        # Threshold slider
+        threshold_group = QGroupBox("Threshold")
+        threshold_layout = QFormLayout()
+        threshold_layout.setContentsMargins(6, 6, 6, 6)
+        threshold_layout.setVerticalSpacing(4)
+
+        self.threshold_slider = QSlider(Qt.Orientation.Horizontal)
+        self.threshold_slider.setRange(0, SLIDER_SCALE)
+        self.threshold_label = QLabel()
+        row = QHBoxLayout()
+        row.addWidget(self.threshold_slider)
+        row.addWidget(self.threshold_label)
+        threshold_layout.addRow("Score threshold:", row)
+
+        threshold_help = QLabel(
+            "Minimum combined score for a moment to become a highlight. "
+            "Lower = more highlights, higher = only the best."
+        )
+        threshold_help.setWordWrap(True)
+        threshold_help.setStyleSheet("color: gray;")
+        threshold_layout.addRow(threshold_help)
+
+        threshold_group.setLayout(threshold_layout)
+        settings_layout.addWidget(threshold_group)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setWidget(settings_widget)
+        splitter.addWidget(scroll)
+
+        # --- Bottom: progress area with file list ---
+        progress_widget = QWidget()
+        progress_layout = QVBoxLayout(progress_widget)
+        progress_layout.setContentsMargins(4, 4, 4, 4)
+
+        # Status and progress bar
+        self.status_label = QLabel("")
+        progress_layout.addWidget(self.status_label)
+
+        self.warning_label = QLabel("")
+        self.warning_label.setWordWrap(True)
+        self.warning_label.setStyleSheet("color: #cc7700;")
+        self.warning_label.hide()
+        progress_layout.addWidget(self.warning_label)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.hide()
+        progress_layout.addWidget(self.progress_bar)
+
+        # File status list + frame preview side by side
+        file_preview_splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        self.file_list = QListWidget()
+        self.file_list.setAlternatingRowColors(True)
+        file_preview_splitter.addWidget(self.file_list)
+
+        self.frame_preview_label = QLabel()
+        self.frame_preview_label.setMinimumSize(160, 90)
+        self.frame_preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.frame_preview_label.setScaledContents(True)
+        self.frame_preview_label.setStyleSheet("background: black;")
+        file_preview_splitter.addWidget(self.frame_preview_label)
+
+        file_preview_splitter.setStretchFactor(0, 1)
+        file_preview_splitter.setStretchFactor(1, 1)
+
+        progress_layout.addWidget(file_preview_splitter, stretch=1)
+
+        # Buttons
+        btn_layout = QHBoxLayout()
+        self.analyze_button = QPushButton("Analyze All")
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setEnabled(False)
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.analyze_button)
+        btn_layout.addWidget(self.cancel_button)
+        progress_layout.addLayout(btn_layout)
+
+        splitter.addWidget(progress_widget)
+
+        # Give both halves equal starting weight
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 1)
+
+    def _connect_signals(self) -> None:
+        self.scene_check.toggled.connect(lambda on: self._on_check_toggled("scene", on))
+        self.audio_check.toggled.connect(lambda on: self._on_check_toggled("audio", on))
+        self.motion_check.toggled.connect(lambda on: self._on_check_toggled("motion", on))
+        self.semantic_check.toggled.connect(
+            lambda on: self._on_check_toggled("semantic", on)
+        )
+        self.emotion_check.toggled.connect(
+            lambda on: self._on_check_toggled("emotion", on)
+        )
+
+        self.scene_slider.valueChanged.connect(
+            lambda v: self._on_slider_changed("scene", v)
+        )
+        self.audio_slider.valueChanged.connect(
+            lambda v: self._on_slider_changed("audio", v)
+        )
+        self.motion_slider.valueChanged.connect(
+            lambda v: self._on_slider_changed("motion", v)
+        )
+        self.semantic_slider.valueChanged.connect(
+            lambda v: self._on_slider_changed("semantic", v)
+        )
+        self.emotion_slider.valueChanged.connect(
+            lambda v: self._on_slider_changed("emotion", v)
+        )
+        self.threshold_slider.valueChanged.connect(self._on_threshold_changed)
+
+        self.auto_balance_check.toggled.connect(self._on_auto_balance_toggled)
+        self.edit_prompts_button.clicked.connect(self._open_prompt_editor)
+        self.analyze_button.clicked.connect(self.start_analysis)
+        self.cancel_button.clicked.connect(self.cancel_analysis)
+
+    def _load_settings(self) -> None:
+        """Populate UI from settings."""
+        self.scene_slider.setValue(int(self.settings.scene_weight * SLIDER_SCALE))
+        self.audio_slider.setValue(int(self.settings.audio_weight * SLIDER_SCALE))
+        self.motion_slider.setValue(int(self.settings.motion_weight * SLIDER_SCALE))
+        self.semantic_slider.setValue(int(self.settings.semantic_weight * SLIDER_SCALE))
+        self.emotion_slider.setValue(int(self.settings.emotion_weight * SLIDER_SCALE))
+        self.threshold_slider.setValue(
+            int(self.settings.score_threshold * SLIDER_SCALE)
+        )
+
+        self.scene_check.setChecked(self.settings.scene_weight > 0)
+        self.audio_check.setChecked(self.settings.audio_weight > 0)
+        self.motion_check.setChecked(self.settings.motion_weight > 0)
+        self.semantic_check.setChecked(self.settings.semantic_weight > 0)
+        self.emotion_check.setChecked(self.settings.emotion_weight > 0)
+
+        # Ensure sliders are disabled when their checkbox is unchecked
+        # (setChecked(False) on an already-unchecked box won't emit toggled)
+        for name in self._DETECTOR_NAMES:
+            check = getattr(self, f"{name}_check")
+            slider = getattr(self, f"{name}_slider")
+            slider.setEnabled(check.isChecked())
+
+    _DETECTOR_NAMES = ("scene", "audio", "motion", "semantic", "emotion")
+
+    _DEFAULT_WEIGHT = SLIDER_SCALE // 2  # 50% when checkbox toggled on
+
+    def _on_check_toggled(self, detector: str, enabled: bool) -> None:
+        slider = getattr(self, f"{detector}_slider")
+        if self.auto_balance_check.isChecked():
+            # In auto-balance mode, sliders stay disabled; rebalance all
+            slider.setEnabled(False)
+            if not enabled:
+                slider.setValue(0)
+            self._rebalance_weights()
+        else:
+            slider.setEnabled(enabled)
+            if enabled and slider.value() == 0:
+                slider.setValue(self._DEFAULT_WEIGHT)
+            elif not enabled:
+                slider.setValue(0)
+
+    def _on_auto_balance_toggled(self, enabled: bool) -> None:
+        """Toggle auto-balance mode for detector weights."""
+        if enabled:
+            self._rebalance_weights()
+        # Enable/disable sliders for checked detectors
+        for name in self._DETECTOR_NAMES:
+            check = getattr(self, f"{name}_check")
+            slider = getattr(self, f"{name}_slider")
+            if enabled:
+                slider.setEnabled(False)
+            else:
+                slider.setEnabled(check.isChecked())
+
+    def _rebalance_weights(self) -> None:
+        """Set all enabled detector sliders to equal share of 100."""
+        enabled = [
+            name
+            for name in self._DETECTOR_NAMES
+            if getattr(self, f"{name}_check").isChecked()
+        ]
+        if not enabled:
+            return
+        per_detector = SLIDER_SCALE // len(enabled)
+        for name in self._DETECTOR_NAMES:
+            slider = getattr(self, f"{name}_slider")
+            if name in enabled:
+                slider.setValue(per_detector)
+            else:
+                slider.setValue(0)
+
+    def _on_slider_changed(self, detector: str, value: int) -> None:
+        weight = value / SLIDER_SCALE
+        setattr(self.settings, f"{detector}_weight", weight)
+        label = getattr(self, f"{detector}_label")
+        label.setText(f"{value}%")
+
+    def _on_threshold_changed(self, value: int) -> None:
+        self.settings.score_threshold = value / SLIDER_SCALE
+        self.threshold_label.setText(f"{value}%")
+
+    def _open_prompt_editor(self) -> None:
+        """Open a dialog with positive and negative prompt editors."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Edit Semantic Prompts")
+        dlg.setMinimumSize(600, 400)
+        # Prevent Enter/Return from closing the dialog (QLineEdit ignores
+        # the key event after emitting returnPressed, so it propagates up
+        # to QDialog.keyPressEvent which calls accept by default).
+        orig_key_press = QDialog.keyPressEvent
+
+        def _key_press(event):
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                return
+            orig_key_press(dlg, event)
+
+        dlg.keyPressEvent = _key_press
+        layout = QVBoxLayout(dlg)
+
+        # Two editors side by side
+        columns = QHBoxLayout()
+
+        pos_col = QVBoxLayout()
+        pos_col.addWidget(QLabel("Positive Prompts (what to look for):"))
+        pos_editor = PromptEditor(self.settings.semantic_prompts)
+        pos_col.addWidget(pos_editor)
+        columns.addLayout(pos_col)
+
+        neg_col = QVBoxLayout()
+        neg_col.addWidget(QLabel("Negative Prompts (what to ignore):"))
+        neg_editor = PromptEditor(
+            self.settings.semantic_negative_prompts,
+            default_prompts=DEFAULT_NEGATIVE_PROMPTS,
+        )
+        neg_col.addWidget(neg_editor)
+        columns.addLayout(neg_col)
+
+        layout.addLayout(columns)
+
+        # Clear All button + dialog buttons
+        btn_row = QHBoxLayout()
+        clear_all_btn = QPushButton("Clear All")
+        clear_all_btn.clicked.connect(lambda: (pos_editor.clear_all(), neg_editor.clear_all()))
+        btn_row.addWidget(clear_all_btn)
+        btn_row.addStretch()
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        # Prevent Enter in the prompt text fields from closing the dialog
+        for btn in buttons.buttons():
+            btn.setAutoDefault(False)
+            btn.setDefault(False)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        btn_row.addWidget(buttons)
+        layout.addLayout(btn_row)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.settings.semantic_prompts = pos_editor.prompts
+            self.settings.semantic_negative_prompts = neg_editor.prompts
+
+    def _populate_file_list(self) -> None:
+        """Fill the file list with source filenames and pending status."""
+        self.file_list.clear()
+        for path in self._source_paths:
+            name = Path(path).name
+            item = QListWidgetItem(f"{_PENDING}  {name}")
+            item.setForeground(Qt.GlobalColor.gray)
+            self.file_list.addItem(item)
+
+    def _update_file_status(self, index: int, marker: str) -> None:
+        """Update a single file's status marker and color in the list."""
+        if index < 0 or index >= self.file_list.count():
+            return
+        item = self.file_list.item(index)
+        name = Path(self._source_paths[index]).name
+        item.setText(f"{marker}  {name}")
+        if marker == _COMPLETE:
+            item.setForeground(Qt.GlobalColor.darkGreen)
+        elif marker == _ANALYZING:
+            item.setForeground(Qt.GlobalColor.white)
+        else:
+            item.setForeground(Qt.GlobalColor.gray)
+
+    def start_analysis(self) -> None:
+        """Launch the analysis worker thread."""
+        if not self.project.sources:
+            return
+
+        self._total_files = len(self.project.sources)
+        self._completed_files = 0
+        self._analysis_start_time = time.monotonic()
+        self._total_video_duration = sum(s.duration for s in self.project.sources)
+        self._source_paths = [s.path for s in self.project.sources]
+        self._file_progress = {}
+        self._analyzing_paths = set()
+
+        self._populate_file_list()
+
+        video_paths = [(s.path, s.duration) for s in self.project.sources]
+        self._worker = AnalysisWorker(video_paths, self.settings)
+        self._worker.progress.connect(self._on_progress)
+        self._worker.file_complete.connect(self._on_file_complete)
+        self._worker.all_complete.connect(self._on_all_complete)
+        self._worker.error.connect(self._on_error)
+        self._worker.status.connect(self._on_status)
+        self._worker.frame_preview.connect(self._on_frame_preview)
+        self._worker.warning.connect(self._on_warning)
+
+        self.warning_label.hide()
+        self.warning_label.setText("")
+        self._warnings: list[str] = []
+
+        n = self._total_files
+        self.status_label.setText(f"Analyzing {n} video{'s' if n != 1 else ''}...")
+        self.progress_bar.setValue(0)
+        self.progress_bar.show()
+        self.analyze_button.setEnabled(False)
+        self.cancel_button.setEnabled(True)
+
+        self._worker.start()
+        self.analysis_started.emit()
+
+    def cancel_analysis(self) -> None:
+        """Request cancellation of the running worker."""
+        if self._worker:
+            self._worker.cancel()
+            self.status_label.setText("Cancelling...")
+
+    def _on_status(self, message: str) -> None:
+        self.status_label.setText(message)
+
+    def _on_warning(self, message: str) -> None:
+        """Display a warning from the analysis pipeline."""
+        if message not in self._warnings:
+            self._warnings.append(message)
+            self.warning_label.setText("\n".join(self._warnings))
+            self.warning_label.show()
+
+    @staticmethod
+    def _format_eta(seconds: float) -> str:
+        """Format seconds into a human-readable ETA string."""
+        if seconds < 60:
+            return f"~{int(seconds)}s remaining"
+        minutes = int(seconds) // 60
+        secs = int(seconds) % 60
+        return f"~{minutes}m {secs:02d}s remaining"
+
+    def _on_progress(self, source_path: str, fraction: float) -> None:
+        # Track per-file progress
+        self._file_progress[source_path] = fraction
+
+        # Mark file as analyzing in list on first progress
+        if source_path not in self._analyzing_paths:
+            self._analyzing_paths.add(source_path)
+            try:
+                idx = self._source_paths.index(source_path)
+                self._update_file_status(idx, _ANALYZING)
+            except ValueError:
+                pass
+
+        # Overall progress = sum of all per-file fractions / total files
+        overall = sum(self._file_progress.values()) / self._total_files
+        self.progress_bar.setValue(int(overall * 100))
+
+        # Compute rate and ETA
+        elapsed = time.monotonic() - self._analysis_start_time
+        rate_str = ""
+        eta_str = ""
+        if elapsed > 1.0 and overall > 0.01:
+            if self._total_video_duration > 0:
+                processed_duration = self._total_video_duration * overall
+                rate = processed_duration / elapsed
+                rate_str = f"{rate:.1f}x realtime"
+            eta = elapsed * (1 - overall) / overall
+            eta_str = self._format_eta(eta)
+
+        active = len(self._analyzing_paths) - self._completed_files
+        if active <= 1:
+            basename = Path(source_path).name
+            desc = (
+                f"Analyzing {basename} "
+                f"({self._completed_files + 1} of {self._total_files})"
+            )
+        else:
+            desc = f"Analyzing {active} of {self._total_files} clips"
+
+        parts = [desc]
+        if rate_str and eta_str:
+            parts.append(f"\u2014 {rate_str}, {eta_str}")
+        elif eta_str:
+            parts.append(f"\u2014 {eta_str}")
+        self.status_label.setText(" ".join(parts))
+
+    def _on_file_complete(self, source_path: str) -> None:
+        # Mark completed in file list
+        self._file_progress[source_path] = 1.0
+        self._completed_files += 1
+        try:
+            idx = self._source_paths.index(source_path)
+            self._update_file_status(idx, _COMPLETE)
+        except ValueError:
+            pass
+
+        basename = Path(source_path).name
+        self.status_label.setText(
+            f"Completed {basename} ({self._completed_files} of {self._total_files})"
+        )
+
+    def _on_frame_preview(self, image: QImage) -> None:
+        """Display a frame thumbnail from the analysis worker."""
+        pixmap = QPixmap.fromImage(image)
+        self.frame_preview_label.setPixmap(pixmap)
+
+    def _on_all_complete(self, moments: list) -> None:
+        n = self._total_files
+        count = len(moments)
+        self.status_label.setText(
+            f"Analysis complete \u2014 found {count} highlight{'s' if count != 1 else ''} "
+            f"in {n} video{'s' if n != 1 else ''}"
+        )
+        self.progress_bar.hide()
+        self.analyze_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
+        self._worker = None
+        self._has_results = True
+        self.analysis_complete.emit(moments)
+
+    def _on_error(self, message: str) -> None:
+        self.status_label.setText(f"Error: {message}")
+        self.progress_bar.hide()
+        self.analyze_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
+        self._worker = None
+
+    @property
+    def has_results(self) -> bool:
+        return self._has_results
+
+    @property
+    def is_analyzing(self) -> bool:
+        return self._worker is not None and self._worker.isRunning()
